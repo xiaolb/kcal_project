@@ -1,0 +1,10 @@
+{
+  "name": "calorie-burn-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:calorie": "node --test tests/*.test.mjs",
+    "serve:calorie": "python3 -m http.server 5179"
+  }
+}
