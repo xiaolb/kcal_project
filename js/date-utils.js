@@ -37,7 +37,7 @@ export function parseDateKey(dateKey) {
   const month = Number(monthText);
   const date = Number(dateText);
 
-  if (month < 1 || month > 12 || date < 1 || date > getDaysInMonth(year, month)) {
+  if (year < 1000 || month < 1 || month > 12 || date < 1 || date > getDaysInMonth(year, month)) {
     throw new Error(`Invalid date key: ${dateKey}`);
   }
 
@@ -45,6 +45,10 @@ export function parseDateKey(dateKey) {
 }
 
 export function toDateKey(date) {
+  if (date.getFullYear() < 1000) {
+    throw new Error('Invalid date key year');
+  }
+
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 

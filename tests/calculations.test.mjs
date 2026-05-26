@@ -13,6 +13,7 @@ test('normalizeCaloriesInput accepts non-negative numeric values', () => {
   assert.deepEqual(normalizeCaloriesInput('520'), { ok: true, value: 520 });
   assert.deepEqual(normalizeCaloriesInput('0'), { ok: true, value: 0 });
   assert.deepEqual(normalizeCaloriesInput('42.5'), { ok: true, value: 42.5 });
+  assert.deepEqual(normalizeCaloriesInput(' 42.5 '), { ok: true, value: 42.5 });
 });
 
 test('normalizeCaloriesInput rejects blank, negative, and non-numeric values', () => {
@@ -24,6 +25,10 @@ test('normalizeCaloriesInput rejects blank, negative, and non-numeric values', (
 test('normalizeCaloriesInput rejects non-plain decimal numeric formats', () => {
   assert.equal(normalizeCaloriesInput('0x10').ok, false);
   assert.equal(normalizeCaloriesInput('1e3').ok, false);
+  assert.equal(normalizeCaloriesInput('Infinity').ok, false);
+  assert.equal(normalizeCaloriesInput('NaN').ok, false);
+  assert.equal(normalizeCaloriesInput('1.').ok, false);
+  assert.equal(normalizeCaloriesInput('.5').ok, false);
 });
 
 test('calculateFatGrams returns body fat and pure fat grams rounded to one decimal', () => {

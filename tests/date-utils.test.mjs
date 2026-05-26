@@ -17,6 +17,10 @@ test('toDateKey formats a local date as YYYY-MM-DD', () => {
   assert.equal(toDateKey(new Date(2026, 4, 26)), '2026-05-26');
 });
 
+test('toDateKey rejects dates before supported YYYY years', () => {
+  assert.throws(() => toDateKey(new Date(999, 0, 1)), /Invalid date key year/);
+});
+
 test('parseDateKey returns a local Date for the key', () => {
   const date = parseDateKey('2026-05-26');
 
@@ -27,6 +31,17 @@ test('parseDateKey returns a local Date for the key', () => {
 
 test('parseDateKey rejects impossible dates instead of rolling them over', () => {
   assert.throws(() => parseDateKey('2026-02-31'), Error);
+});
+
+test('parseDateKey rejects unsupported years before 1000', () => {
+  assert.throws(() => parseDateKey('0001-01-01'), Error);
+  assert.throws(() => parseDateKey('0999-12-31'), Error);
+});
+
+test('parseDateKey rejects malformed and out-of-range date keys', () => {
+  assert.throws(() => parseDateKey('2026-2-03'), Error);
+  assert.throws(() => parseDateKey('2026-00-01'), Error);
+  assert.throws(() => parseDateKey('2026-13-01'), Error);
 });
 
 test('getWeekRange returns Monday through Sunday around the selected date', () => {
