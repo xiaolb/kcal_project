@@ -93,10 +93,17 @@ export function getRetentionCutoffDateKey(todayKey = toDateKey(new Date())) {
 }
 
 export function isDateKeyInRange(dateKey, startDate, endDate) {
+  parseDateKey(dateKey);
+  parseDateKey(startDate);
+  parseDateKey(endDate);
+
   return dateKey >= startDate && dateKey <= endDate;
 }
 
 export function enumerateDateKeys(startDate, endDate) {
+  parseDateKey(startDate);
+  parseDateKey(endDate);
+
   const dates = [];
 
   for (let dateKey = startDate; dateKey <= endDate; dateKey = addDays(dateKey, 1)) {

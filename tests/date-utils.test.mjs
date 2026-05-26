@@ -105,3 +105,24 @@ test('addDays offsets date keys and isDateKeyInRange includes boundaries', () =>
   assert.equal(isDateKeyInRange('2026-05-24', '2026-05-25', '2026-05-27'), false);
   assert.equal(isDateKeyInRange('2026-05-28', '2026-05-25', '2026-05-27'), false);
 });
+
+test('isDateKeyInRange validates all date key inputs', () => {
+  assert.throws(
+    () => isDateKeyInRange('2026-02-31', '2026-02-01', '2026-03-01'),
+    Error,
+  );
+  assert.throws(
+    () => isDateKeyInRange('2026-02-01', 'bad', '2026-03-01'),
+    Error,
+  );
+  assert.throws(
+    () => isDateKeyInRange('2026-02-01', '2026-02-01', 'bad'),
+    Error,
+  );
+});
+
+test('enumerateDateKeys validates both boundaries before enumeration', () => {
+  assert.throws(() => enumerateDateKeys('bad', 'aaa'), Error);
+  assert.throws(() => enumerateDateKeys('2026-02-31', '2026-02-01'), Error);
+  assert.throws(() => enumerateDateKeys('2026-03-01', '2026-02-31'), Error);
+});
