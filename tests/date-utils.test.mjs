@@ -21,6 +21,10 @@ test('toDateKey rejects dates before supported YYYY years', () => {
   assert.throws(() => toDateKey(new Date(999, 0, 1)), /Invalid date key year/);
 });
 
+test('toDateKey rejects invalid Date instances', () => {
+  assert.throws(() => toDateKey(new Date('bad')), Error);
+});
+
 test('parseDateKey returns a local Date for the key', () => {
   const date = parseDateKey('2026-05-26');
 
@@ -121,8 +125,19 @@ test('isDateKeyInRange validates all date key inputs', () => {
   );
 });
 
+test('isDateKeyInRange rejects reversed ranges', () => {
+  assert.throws(
+    () => isDateKeyInRange('2026-05-26', '2026-05-27', '2026-05-25'),
+    /Invalid date range/,
+  );
+});
+
 test('enumerateDateKeys validates both boundaries before enumeration', () => {
   assert.throws(() => enumerateDateKeys('bad', 'aaa'), Error);
   assert.throws(() => enumerateDateKeys('2026-02-31', '2026-02-01'), Error);
   assert.throws(() => enumerateDateKeys('2026-03-01', '2026-02-31'), Error);
+});
+
+test('enumerateDateKeys rejects reversed ranges', () => {
+  assert.throws(() => enumerateDateKeys('2026-05-27', '2026-05-25'), /Invalid date range/);
 });

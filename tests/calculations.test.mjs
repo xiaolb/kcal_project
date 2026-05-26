@@ -31,6 +31,10 @@ test('normalizeCaloriesInput rejects non-plain decimal numeric formats', () => {
   assert.equal(normalizeCaloriesInput('.5').ok, false);
 });
 
+test('normalizeCaloriesInput rejects non-string and non-number inputs', () => {
+  assert.equal(normalizeCaloriesInput([1]).ok, false);
+});
+
 test('calculateFatGrams returns body fat and pure fat grams rounded to one decimal', () => {
   assert.deepEqual(calculateFatGrams(520), {
     bodyFatGrams: 67.6,

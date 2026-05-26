@@ -45,6 +45,10 @@ export function parseDateKey(dateKey) {
 }
 
 export function toDateKey(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    throw new Error('Invalid date');
+  }
+
   if (date.getFullYear() < 1000) {
     throw new Error('Invalid date key year');
   }
@@ -97,12 +101,20 @@ export function isDateKeyInRange(dateKey, startDate, endDate) {
   parseDateKey(startDate);
   parseDateKey(endDate);
 
+  if (startDate > endDate) {
+    throw new Error('Invalid date range');
+  }
+
   return dateKey >= startDate && dateKey <= endDate;
 }
 
 export function enumerateDateKeys(startDate, endDate) {
   parseDateKey(startDate);
   parseDateKey(endDate);
+
+  if (startDate > endDate) {
+    throw new Error('Invalid date range');
+  }
 
   const dates = [];
 

@@ -9,6 +9,10 @@ export function roundTo(value, digits) {
 }
 
 export function normalizeCaloriesInput(input) {
+  if (typeof input !== 'string' && typeof input !== 'number') {
+    return { ok: false, error: 'Calories must be a plain non-negative decimal number.' };
+  }
+
   const text = String(input).trim();
 
   if (text === '') {
