@@ -2,8 +2,45 @@ export function pad2(value) {
   return String(value).padStart(2, '0');
 }
 
+function getDaysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function subtractMonthsClamped(dateKey, months) {
+  const date = parseDateKey(dateKey);
+  const targetMonthIndex = date.getFullYear() * 12 + date.getMonth() - months;
+  const targetYear = Math.floor(targetMonthIndex / 12);
+  const targetMonth = targetMonthIndex - targetYear * 12 + 1;
+  const targetDate = Math.min(date.getDate(), getDaysInMonth(targetYear, targetMonth));
+
+  return toDateKey(new Date(targetYear, targetMonth - 1, targetDate));
+}
+
+function subtractYearsClamped(dateKey, years) {
+  const date = parseDateKey(dateKey);
+  const targetYear = date.getFullYear() - years;
+  const targetMonth = date.getMonth() + 1;
+  const targetDate = Math.min(date.getDate(), getDaysInMonth(targetYear, targetMonth));
+
+  return toDateKey(new Date(targetYear, targetMonth - 1, targetDate));
+}
+
 export function parseDateKey(dateKey) {
-  const [year, month, date] = dateKey.split('-').map(Number);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+
+  if (!match) {
+    throw new Error(`Invalid date key: ${dateKey}`);
+  }
+
+  const [, yearText, monthText, dateText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const date = Number(dateText);
+
+  if (month < 1 || month > 12 || date < 1 || date > getDaysInMonth(year, month)) {
+    throw new Error(`Invalid date key: ${dateKey}`);
+  }
+
   return new Date(year, month - 1, date);
 }
 
@@ -41,19 +78,14 @@ export function getMonthRange(dateKey) {
 }
 
 export function getHalfYearRange(dateKey) {
-  const date = parseDateKey(dateKey);
-  date.setMonth(date.getMonth() - 6);
-
   return {
-    startDate: toDateKey(date),
+    startDate: subtractMonthsClamped(dateKey, 6),
     endDate: dateKey,
   };
 }
 
 export function getRetentionCutoffDateKey(todayKey = toDateKey(new Date())) {
-  const date = parseDateKey(todayKey);
-  date.setFullYear(date.getFullYear() - 1);
-  return toDateKey(date);
+  return subtractYearsClamped(todayKey, 1);
 }
 
 export function isDateKeyInRange(dateKey, startDate, endDate) {

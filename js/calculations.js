@@ -15,6 +15,10 @@ export function normalizeCaloriesInput(input) {
     return { ok: false, error: 'Calories are required.' };
   }
 
+  if (!/^\d+(?:\.\d+)?$/.test(text)) {
+    return { ok: false, error: 'Calories must be a plain non-negative decimal number.' };
+  }
+
   const value = Number(text);
 
   if (!Number.isFinite(value) || value < 0) {
