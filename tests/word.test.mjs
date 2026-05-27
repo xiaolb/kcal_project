@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { mergeImportedRecords } from '../js/records.js';
+import { isValidIsoDate, mergeImportedRecords } from '../js/records.js';
 import {
   buildWordHtml,
   normalizeImportedRows,
@@ -85,6 +85,41 @@ test('normalizeImportedRows skips invalid and expired rows', () => {
     invalidCount: 2,
     expiredCount: 1,
   });
+});
+
+test('isValidIsoDate only accepts exact UTC ISO timestamps with real dates', () => {
+  assert.equal(isValidIsoDate('2026-05-26T10:00:00.000Z'), true);
+  assert.equal(isValidIsoDate('2026-02-30T10:00:00.000Z'), false);
+  assert.equal(isValidIsoDate('2026-05-26'), false);
+  assert.equal(isValidIsoDate('May 26 2026'), false);
+  assert.equal(
+    isValidIsoDate({
+      toString() {
+        return '2026-05-26T10:00:00.000Z';
+      },
+    }),
+    false,
+  );
+});
+
+test('normalizeImportedRows counts rows with invalid updatedAt as invalid', () => {
+  assert.deepEqual(
+    normalizeImportedRows(
+      [
+        {
+          date: '2026-05-26',
+          calories: '520',
+          updatedAt: '2026-02-30T10:00:00.000Z',
+        },
+      ],
+      { todayKey: '2026-05-26' },
+    ),
+    {
+      records: [],
+      invalidCount: 1,
+      expiredCount: 0,
+    },
+  );
 });
 
 test('mergeImportedRecords inserts new records sorted by date', () => {
