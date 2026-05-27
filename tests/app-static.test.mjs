@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -77,4 +78,29 @@ test('today fat metric stays on one line in narrow mobile browsers', () => {
   assert.match(css, /\.summary-tile strong\.fat-pair\s*{[^}]*white-space:\s*nowrap;/s);
   assert.doesNotMatch(appSource, /todayFat\.textContent\s*=\s*`[^`]*\s\/\s[^`]*`/);
   assert.match(appSource, /todayFat\.textContent\s*=\s*`\$\{formatGrams\(fatGrams\.bodyFatGrams\)}\/\$\{formatGrams\(fatGrams\.pureFatGrams\)}`/);
+});
+
+test('tracked project files do not reference the original local download path', () => {
+  const trackedFiles = execFileSync('git', ['ls-files'], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  }).trim().split('\n').filter(Boolean);
+  const forbiddenFragments = [
+    ['xiao', 'libin'].join(''),
+    ['/', 'Use', 'rs', '/'].join(''),
+    ['Desktop', '/kcal'].join(''),
+  ];
+  const violations = [];
+
+  for (const filePath of trackedFiles) {
+    const content = readProjectFile(filePath);
+
+    for (const fragment of forbiddenFragments) {
+      if (content.includes(fragment)) {
+        violations.push(`${filePath}: ${fragment}`);
+      }
+    }
+  }
+
+  assert.deepEqual(violations, []);
 });

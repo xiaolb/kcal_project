@@ -16,9 +16,11 @@
 ## 本地运行
 
 ```bash
-cd /Users/xiaolibin/Desktop/kcal/project
+cd <下载后的项目目录>
 npm run serve:calorie
 ```
+
+例如你把仓库下载到了 `Downloads/kcal_project`，就进入这个实际目录后再执行启动命令。不要照抄他人电脑上的绝对路径。
 
 然后在浏览器打开：
 
