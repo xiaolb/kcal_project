@@ -60,3 +60,10 @@ test('app entrypoint wires required calorie tracker modules', () => {
     assert.match(appSource, new RegExp(requiredText));
   }
 });
+
+test('static shell copy describes calorie burn instead of intake', () => {
+  const html = readProjectFile('index.html');
+
+  assert.doesNotMatch(html, /摄入|本次热量/);
+  assert.match(html, /今日消耗/);
+});

@@ -24,14 +24,14 @@
           <div class="date-row">
             <div>
               <p class="section-kicker">记录</p>
-              <h2 id="recordTitle">今天摄入</h2>
+              <h2 id="recordTitle">今日消耗</h2>
             </div>
             <time id="todayLabel" class="today-label">今天</time>
           </div>
 
           <div class="today-summary" aria-label="今日汇总">
             <div class="summary-tile primary">
-              <span>热量</span>
+              <span>消耗</span>
               <strong id="todayCalories">0</strong>
               <em>kcal</em>
             </div>
@@ -43,7 +43,7 @@
           </div>
 
           <form id="recordForm" class="record-form" novalidate>
-            <label for="caloriesInput">本次热量</label>
+            <label for="caloriesInput">今日消耗大卡</label>
             <div class="input-row">
               <input
                 id="caloriesInput"
@@ -100,7 +100,7 @@
 
         <div class="summary-grid" aria-label="区间汇总">
           <div class="summary-card">
-            <span>总热量</span>
+            <span>总消耗</span>
             <strong id="summaryCalories">0</strong>
             <em>kcal</em>
           </div>
@@ -120,7 +120,7 @@
           <div class="panel-heading">
             <h2 id="rangeLabel">最近 7 天</h2>
           </div>
-          <div id="barChart" class="bar-chart" aria-label="热量柱状图"></div>
+          <div id="barChart" class="bar-chart" aria-label="消耗大卡柱状图"></div>
         </section>
 
         <section class="list-panel" aria-labelledby="recordListTitle">
