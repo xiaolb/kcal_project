@@ -1,4 +1,4 @@
-const CACHE_NAME = "calorie-burn-tracker-v1";
+const CACHE_NAME = "calorie-burn-tracker-v2";
 const STATIC_ASSETS = [
   "./",
   "./index.html",

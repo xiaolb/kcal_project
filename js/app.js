@@ -109,7 +109,7 @@ async function renderToday() {
   const fatGrams = calculateFatGrams(calories);
 
   dom.todayCalories.textContent = formatCalories(calories);
-  dom.todayFat.textContent = `${formatGrams(fatGrams.bodyFatGrams)} / ${formatGrams(fatGrams.pureFatGrams)}`;
+  dom.todayFat.textContent = `${formatGrams(fatGrams.bodyFatGrams)}/${formatGrams(fatGrams.pureFatGrams)}`;
   dom.todayFat.setAttribute(
     'aria-label',
     `身体脂肪组织 ${formatGrams(fatGrams.bodyFatGrams)} 克，理论纯脂肪 ${formatGrams(fatGrams.pureFatGrams)} 克`,

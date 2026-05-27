@@ -67,3 +67,14 @@ test('static shell copy describes calorie burn instead of intake', () => {
   assert.doesNotMatch(html, /摄入|本次热量/);
   assert.match(html, /今日消耗/);
 });
+
+test('today fat metric stays on one line in narrow mobile browsers', () => {
+  const html = readProjectFile('index.html');
+  const css = readProjectFile('styles.css');
+  const appSource = readProjectFile('js/app.js');
+
+  assert.match(html, /id="todayFat"[^>]*class="[^"]*\bfat-pair\b/);
+  assert.match(css, /\.summary-tile strong\.fat-pair\s*{[^}]*white-space:\s*nowrap;/s);
+  assert.doesNotMatch(appSource, /todayFat\.textContent\s*=\s*`[^`]*\s\/\s[^`]*`/);
+  assert.match(appSource, /todayFat\.textContent\s*=\s*`\$\{formatGrams\(fatGrams\.bodyFatGrams\)}\/\$\{formatGrams\(fatGrams\.pureFatGrams\)}`/);
+});
