@@ -7,10 +7,13 @@ import {
   deleteRecordsBefore,
   getRecord,
   listRecords,
+  openDatabase,
   replaceRecords,
   requestToPromise,
+  runTransaction,
   upsertRecord,
 } from '../js/storage.js';
+import { STORE_NAME } from '../js/constants.js';
 
 function createRequest() {
   return {
@@ -21,62 +24,121 @@ function createRequest() {
   };
 }
 
-function finishRequest(request, result) {
-  queueMicrotask(() => {
-    request.result = result;
-    request.onsuccess?.({ target: request });
-  });
-  return request;
-}
-
 class FakeObjectStore {
-  constructor(records) {
-    this.records = records;
+  constructor(transaction) {
+    this.transaction = transaction;
   }
 
   get(date) {
-    return finishRequest(createRequest(), this.records.get(date));
+    return this.transaction.queueRequest(() => this.transaction.records.get(date));
   }
 
   getAll() {
-    return finishRequest(createRequest(), Array.from(this.records.values()));
+    return this.transaction.queueRequest(() => Array.from(this.transaction.records.values()));
   }
 
   put(record) {
-    this.records.set(record.date, { ...record });
-    return finishRequest(createRequest(), record.date);
+    return this.transaction.queueRequest(() => {
+      this.transaction.records.set(record.date, { ...record });
+      return record.date;
+    });
   }
 
   clear() {
-    this.records.clear();
-    return finishRequest(createRequest(), undefined);
+    return this.transaction.queueRequest(() => {
+      this.transaction.records.clear();
+      return undefined;
+    });
   }
 
   delete(date) {
-    this.records.delete(date);
-    return finishRequest(createRequest(), undefined);
+    return this.transaction.queueRequest(() => {
+      this.transaction.records.delete(date);
+      return undefined;
+    });
   }
 }
 
 class FakeTransaction {
-  constructor(records) {
-    this.records = records;
+  constructor(db) {
+    this.db = db;
+    this.records = db.records;
     this.oncomplete = null;
     this.onerror = null;
     this.onabort = null;
     this.error = null;
     this.aborted = false;
-    queueMicrotask(() => this.complete());
+    this.pendingRequests = 0;
+    this.completionScheduled = false;
+    this.scheduleCompletionIfIdle();
   }
 
   objectStore() {
-    return new FakeObjectStore(this.records);
+    return new FakeObjectStore(this);
+  }
+
+  queueRequest(operation) {
+    const request = createRequest();
+    this.pendingRequests += 1;
+
+    queueMicrotask(() => {
+      if (this.aborted) {
+        request.error = this.error;
+        request.onerror?.({ target: request });
+        this.pendingRequests -= 1;
+        this.scheduleCompletionIfIdle();
+        return;
+      }
+
+      if (this.db.closed) {
+        request.error = new Error('Database closed before request completed');
+        request.onerror?.({ target: request });
+        this.error = request.error;
+        this.onerror?.({ target: this });
+        this.pendingRequests -= 1;
+        return;
+      }
+
+      try {
+        request.result = operation();
+        request.onsuccess?.({ target: request });
+      } catch (error) {
+        request.error = error;
+        this.error = error;
+        request.onerror?.({ target: request });
+        this.onerror?.({ target: this });
+      } finally {
+        this.pendingRequests -= 1;
+        this.scheduleCompletionIfIdle();
+      }
+    });
+
+    return request;
   }
 
   abort() {
     this.aborted = true;
     this.error = new Error('Transaction aborted');
-    this.onabort?.({ target: this });
+    queueMicrotask(() => {
+      this.onabort?.({ target: this });
+    });
+  }
+
+  scheduleCompletionIfIdle() {
+    if (this.completionScheduled) {
+      return;
+    }
+
+    this.completionScheduled = true;
+    queueMicrotask(() => {
+      this.completionScheduled = false;
+
+      if (this.pendingRequests === 0 && !this.aborted) {
+        this.complete();
+      } else if (this.pendingRequests > 0) {
+        this.scheduleCompletionIfIdle();
+      }
+    });
   }
 
   complete() {
@@ -87,18 +149,26 @@ class FakeTransaction {
 }
 
 class FakeDatabase {
-  constructor(records) {
-    this.records = records;
+  constructor(state) {
+    this.state = state;
+    this.records = state.records;
     this.objectStoreNames = {
-      contains: () => true,
+      contains: (storeName) => this.state.createdStores.has(storeName),
     };
     this.closed = false;
   }
 
-  createObjectStore() {}
+  createObjectStore(storeName, options) {
+    this.state.createObjectStoreCalls.push([storeName, options]);
+    this.state.createdStores.add(storeName);
+  }
 
-  transaction() {
-    return new FakeTransaction(this.records);
+  transaction(storeName) {
+    if (!this.state.createdStores.has(storeName)) {
+      throw new Error(`Missing object store: ${storeName}`);
+    }
+
+    return new FakeTransaction(this);
   }
 
   close() {
@@ -107,14 +177,18 @@ class FakeDatabase {
 }
 
 function installFakeIndexedDb() {
-  const records = new Map();
+  const state = {
+    records: new Map(),
+    createdStores: new Set(),
+    createObjectStoreCalls: [],
+  };
 
   global.window = {
     indexedDB: {
       open() {
         const request = createRequest();
         queueMicrotask(() => {
-          request.result = new FakeDatabase(records);
+          request.result = new FakeDatabase(state);
           request.onupgradeneeded?.({ target: request });
           request.onsuccess?.({ target: request });
         });
@@ -122,6 +196,8 @@ function installFakeIndexedDb() {
       },
     },
   };
+
+  return state;
 }
 
 test.afterEach(() => {
@@ -144,6 +220,56 @@ test('requestToPromise resolves and rejects IDB requests', async () => {
   failure.error = new Error('bad request');
   failure.onerror({ target: failure });
   await assert.rejects(failurePromise, /bad request/);
+});
+
+test('openDatabase creates the daily records object store during upgrade', async () => {
+  const state = installFakeIndexedDb();
+
+  const db = await openDatabase();
+  db.close();
+
+  assert.deepEqual(state.createObjectStoreCalls, [[STORE_NAME, { keyPath: 'date' }]]);
+});
+
+test('runTransaction waits for queued requests before closing the database and returns callback result', async () => {
+  installFakeIndexedDb();
+  const result = await runTransaction('readwrite', (store) => {
+    store.put({
+      date: '2026-05-26',
+      calories: 50,
+      updatedAt: '2026-05-26T00:00:00.000Z',
+    });
+    return 'stored';
+  });
+
+  assert.equal(result, 'stored');
+  assert.deepEqual(await getRecord('2026-05-26'), {
+    date: '2026-05-26',
+    calories: 50,
+    updatedAt: '2026-05-26T00:00:00.000Z',
+  });
+});
+
+test('runTransaction synchronous callback errors reject with the original error without unhandled rejection', async () => {
+  installFakeIndexedDb();
+  const originalError = new Error('original failure');
+  const unhandled = [];
+  const onUnhandled = (reason) => {
+    unhandled.push(reason);
+  };
+
+  process.once('unhandledRejection', onUnhandled);
+
+  await assert.rejects(
+    () => runTransaction('readwrite', () => {
+      throw originalError;
+    }),
+    (error) => error === originalError,
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+  process.removeListener('unhandledRejection', onUnhandled);
+
+  assert.deepEqual(unhandled, []);
 });
 
 test('storage adapter normalizes, replaces, lists, fetches, and deletes records', async () => {
@@ -176,6 +302,26 @@ test('storage adapter normalizes, replaces, lists, fetches, and deletes records'
   assert.equal(await deleteRecordsBefore('2025-05-27'), 1);
   assert.deepEqual(await listRecords(), [
     { date: '2025-05-27', calories: 20, updatedAt: '2025-05-27T00:00:00.000Z' },
+  ]);
+});
+
+test('replaceRecords rejects invalid records without clearing existing data', async () => {
+  installFakeIndexedDb();
+
+  await replaceRecords([
+    { date: '2025-05-26', calories: 10, updatedAt: '2025-05-26T00:00:00.000Z' },
+  ]);
+
+  await assert.rejects(
+    () => replaceRecords([
+      { date: '2025-05-27', calories: 20, updatedAt: '2025-05-27T00:00:00.000Z' },
+      { date: 'bad', calories: 30, updatedAt: '2025-05-28T00:00:00.000Z' },
+    ]),
+    /Invalid record/,
+  );
+
+  assert.deepEqual(await listRecords(), [
+    { date: '2025-05-26', calories: 10, updatedAt: '2025-05-26T00:00:00.000Z' },
   ]);
 });
 

@@ -74,28 +74,36 @@ export async function runTransaction(mode, callback) {
       };
     });
 
-    let callbackPromise;
+    let callbackResult;
 
     try {
-      callbackPromise = toCallbackPromise(callback(store));
+      callbackResult = callback(store);
     } catch (error) {
-      try {
-        transaction.abort();
-      } catch {
-        db.close();
-      }
-      throw error;
-    }
-
-    callbackPromise.catch(() => {
       try {
         transaction.abort();
       } catch {
         // The transaction may already be complete or inactive.
       }
-    });
+      await transactionPromise.catch(() => {});
+      throw error;
+    }
 
-    await Promise.all([callbackPromise, transactionPromise]);
+    let result;
+
+    try {
+      result = await toCallbackPromise(callbackResult);
+    } catch (error) {
+      try {
+        transaction.abort();
+      } catch {
+        // The transaction may already be complete or inactive.
+      }
+      await transactionPromise.catch(() => {});
+      throw error;
+    }
+
+    await transactionPromise;
+    return result;
   } catch (error) {
     try {
       db.close();
