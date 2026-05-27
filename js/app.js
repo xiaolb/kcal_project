@@ -42,11 +42,14 @@ const state = {
   records: [],
 };
 
+/**
+ * 按 id 获取页面元素，缺失时直接抛出，便于尽早发现模板不一致。
+ */
 function byId(id) {
   const element = document.getElementById(id);
 
   if (!element) {
-    throw new Error(`Missing element: ${id}`);
+    throw new Error(`缺少页面元素：${id}`);
   }
 
   return element;
@@ -82,14 +85,23 @@ const dom = {
   refreshStatsButton: byId('refreshStatsButton'),
 };
 
+/**
+ * 更新底部状态文案。
+ */
 function setStatus(text) {
   dom.storageStatus.textContent = text;
 }
 
+/**
+ * 更新记录表单的错误提示。
+ */
 function setRecordError(text) {
   dom.recordError.textContent = text;
 }
 
+/**
+ * 取出可安全导出的规范化记录并按日期排序。
+ */
 function getNormalizedRecords(records = state.records) {
   return records
     .map((record) => normalizeRecord(record))
@@ -97,12 +109,18 @@ function getNormalizedRecords(records = state.records) {
     .sort((left, right) => left.date.localeCompare(right.date));
 }
 
+/**
+ * 从 IndexedDB 重新拉取本地记录。
+ */
 async function refreshRecords() {
   state.records = (await listRecords())
     .slice()
     .sort((left, right) => String(left?.date ?? '').localeCompare(String(right?.date ?? '')));
 }
 
+/**
+ * 刷新今日卡片上的消耗和脂肪换算。
+ */
 async function renderToday() {
   const record = normalizeRecord(await getRecord(state.todayKey));
   const calories = record ? record.calories : 0;
@@ -118,6 +136,9 @@ async function renderToday() {
   dom.recordSubmit.textContent = record ? '修改今日数据' : '提交今日数据';
 }
 
+/**
+ * 根据当前范围配置计算统计区间。
+ */
 function getActiveRange() {
   if (state.rangeType === 'week') {
     return getWeekRange(state.selectedDate);
@@ -141,6 +162,9 @@ function getActiveRange() {
   return { startDate, endDate };
 }
 
+/**
+ * 渲染区间柱状图。
+ */
 function renderBars(records, startDate, endDate) {
   dom.barChart.replaceChildren();
 
@@ -165,6 +189,9 @@ function renderBars(records, startDate, endDate) {
   }
 }
 
+/**
+ * 渲染当前区间的记录列表。
+ */
 function renderRecordList(records) {
   dom.recordList.replaceChildren();
 
@@ -188,6 +215,9 @@ function renderRecordList(records) {
   }
 }
 
+/**
+ * 刷新统计区间、汇总、柱状图和明细列表。
+ */
 function renderStats() {
   const range = getActiveRange();
   const cutoffDate = getRetentionCutoffDateKey(state.todayKey);
@@ -211,6 +241,9 @@ function renderStats() {
   renderRecordList(records);
 }
 
+/**
+ * 切换记录页和统计页。
+ */
 function switchView(targetId) {
   state.activeView = targetId;
   dom.recordView.classList.toggle('view-active', targetId === 'recordView');
@@ -223,6 +256,9 @@ function switchView(targetId) {
   }
 }
 
+/**
+ * 切换统计范围类型。
+ */
 function setRangeType(rangeType) {
   state.rangeType = rangeType;
 
@@ -236,13 +272,16 @@ function setRangeType(rangeType) {
   renderStats();
 }
 
+/**
+ * 处理今日消耗提交。
+ */
 async function handleRecordSubmit(event) {
   event.preventDefault();
 
   const calories = normalizeCaloriesInput(dom.caloriesInput.value);
 
   if (!calories.ok) {
-    setRecordError('请输入非负数字大卡');
+    setRecordError(calories.error);
     return;
   }
 
@@ -259,6 +298,9 @@ async function handleRecordSubmit(event) {
   setStatus('已保存');
 }
 
+/**
+ * 触发浏览器下载。
+ */
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -271,6 +313,9 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * 导出当前记录为 Word 文件。
+ */
 async function handleExport() {
   try {
     downloadBlob(buildWordBlob(getNormalizedRecords()), `calorie-records-${state.todayKey}.doc`);
@@ -281,6 +326,9 @@ async function handleExport() {
   }
 }
 
+/**
+ * 导入 Word 文件并与本地数据合并。
+ */
 async function handleImport(event) {
   const [file] = event.target.files;
 
@@ -307,6 +355,9 @@ async function handleImport(event) {
   }
 }
 
+/**
+ * 绑定页面交互事件。
+ */
 function bindEvents() {
   dom.recordForm.addEventListener('submit', (event) => {
     handleRecordSubmit(event).catch((error) => {
@@ -348,6 +399,9 @@ function bindEvents() {
   });
 }
 
+/**
+ * 在支持的浏览器中注册 Service Worker。
+ */
 function registerServiceWorker() {
   if (
     typeof navigator !== 'undefined'
@@ -355,11 +409,14 @@ function registerServiceWorker() {
     && window.location.protocol !== 'file:'
   ) {
     navigator.serviceWorker.register('./service-worker.js').catch((error) => {
-      console.warn('Service worker registration failed', error);
+      console.warn('Service Worker 注册失败', error);
     });
   }
 }
 
+/**
+ * 页面初始化入口。
+ */
 async function init() {
   dom.todayLabel.textContent = state.todayKey;
   dom.selectedDateInput.value = state.selectedDate;

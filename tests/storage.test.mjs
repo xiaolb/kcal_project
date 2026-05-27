@@ -205,7 +205,7 @@ test.afterEach(() => {
 });
 
 test('assertIndexedDbAvailable throws when browser indexedDB is unavailable', () => {
-  assert.throws(() => assertIndexedDbAvailable(), /INDEXED_DB_UNAVAILABLE/);
+  assert.throws(() => assertIndexedDbAvailable(), /当前浏览器不支持 IndexedDB/);
 });
 
 test('requestToPromise resolves and rejects IDB requests', async () => {
@@ -287,7 +287,7 @@ test('storage adapter normalizes, replaces, lists, fetches, and deletes records'
     updatedAt: '2026-05-26T01:02:03.004Z',
   });
   assert.deepEqual(await getRecord('2026-05-26'), normalized);
-  await assert.rejects(() => upsertRecord({ date: 'bad' }), /Invalid record/);
+  await assert.rejects(() => upsertRecord({ date: 'bad' }), /记录格式无效/);
 
   await replaceRecords([
     { date: '2025-05-26', calories: 10, updatedAt: '2025-05-26T00:00:00.000Z' },
@@ -317,7 +317,7 @@ test('replaceRecords rejects invalid records without clearing existing data', as
       { date: '2025-05-27', calories: 20, updatedAt: '2025-05-27T00:00:00.000Z' },
       { date: 'bad', calories: 30, updatedAt: '2025-05-28T00:00:00.000Z' },
     ]),
-    /Invalid record/,
+    /记录格式无效/,
   );
 
   assert.deepEqual(await listRecords(), [

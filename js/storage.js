@@ -2,12 +2,18 @@ import { DB_NAME, DB_VERSION, STORE_NAME } from './constants.js';
 import { getRetentionCutoffDateKey, parseDateKey } from './date-utils.js';
 import { normalizeRecord } from './records.js';
 
-const INDEXED_DB_UNAVAILABLE = 'INDEXED_DB_UNAVAILABLE';
+const INDEXED_DB_UNAVAILABLE = '当前浏览器不支持 IndexedDB。';
 
+/**
+ * 判断值是否是 IndexedDB request。
+ */
 function isIdbRequest(value) {
   return value && typeof value === 'object' && 'onsuccess' in value && 'onerror' in value;
 }
 
+/**
+ * 将事务回调返回值统一转为 Promise。
+ */
 function toCallbackPromise(value) {
   if (isIdbRequest(value)) {
     return requestToPromise(value);
@@ -20,19 +26,28 @@ function toCallbackPromise(value) {
   return Promise.resolve(value);
 }
 
+/**
+ * 确认当前浏览器环境可以使用 IndexedDB。
+ */
 export function assertIndexedDbAvailable() {
   if (typeof window === 'undefined' || !window.indexedDB) {
     throw new Error(INDEXED_DB_UNAVAILABLE);
   }
 }
 
+/**
+ * 将 IndexedDB request 包装成 Promise。
+ */
 export function requestToPromise(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
+    request.onerror = () => reject(request.error || new Error('IndexedDB 请求失败。'));
   });
 }
 
+/**
+ * 打开应用数据库，并在首次创建时初始化对象仓库。
+ */
 export function openDatabase() {
   assertIndexedDbAvailable();
 
@@ -47,11 +62,14 @@ export function openDatabase() {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
-    request.onblocked = () => reject(new Error('IndexedDB open blocked'));
+    request.onerror = () => reject(request.error || new Error('IndexedDB 打开失败。'));
+    request.onblocked = () => reject(new Error('IndexedDB 打开被阻止，请关闭其它标签页后重试。'));
   });
 }
 
+/**
+ * 执行一次 IndexedDB 事务，等待事务完成后再返回结果。
+ */
 export async function runTransaction(mode, callback) {
   const db = await openDatabase();
 
@@ -66,11 +84,11 @@ export async function runTransaction(mode, callback) {
       };
       transaction.onerror = () => {
         db.close();
-        reject(transaction.error || new Error('IndexedDB transaction failed'));
+        reject(transaction.error || new Error('IndexedDB 事务失败。'));
       };
       transaction.onabort = () => {
         db.close();
-        reject(transaction.error || new Error('IndexedDB transaction aborted'));
+        reject(transaction.error || new Error('IndexedDB 事务已中止。'));
       };
     });
 
@@ -82,7 +100,7 @@ export async function runTransaction(mode, callback) {
       try {
         transaction.abort();
       } catch {
-        // The transaction may already be complete or inactive.
+        // 事务可能已经完成或失效。
       }
       await transactionPromise.catch(() => {});
       throw error;
@@ -96,7 +114,7 @@ export async function runTransaction(mode, callback) {
       try {
         transaction.abort();
       } catch {
-        // The transaction may already be complete or inactive.
+        // 事务可能已经完成或失效。
       }
       await transactionPromise.catch(() => {});
       throw error;
@@ -108,12 +126,15 @@ export async function runTransaction(mode, callback) {
     try {
       db.close();
     } catch {
-      // Ignore close failures while surfacing the original error.
+      // 保留原始错误，忽略关闭数据库时的附带失败。
     }
     throw error;
   }
 }
 
+/**
+ * 按日期读取单条记录。
+ */
 export async function getRecord(date) {
   parseDateKey(date);
 
@@ -127,6 +148,9 @@ export async function getRecord(date) {
   return record;
 }
 
+/**
+ * 读取全部本地记录。
+ */
 export async function listRecords() {
   let records = [];
   await runTransaction('readonly', (store) => (
@@ -138,11 +162,14 @@ export async function listRecords() {
   return records;
 }
 
+/**
+ * 新增或覆盖一条日期记录。
+ */
 export async function upsertRecord(record) {
   const normalized = normalizeRecord(record);
 
   if (!normalized) {
-    throw new Error('Invalid record');
+    throw new Error('记录格式无效。');
   }
 
   await runTransaction('readwrite', (store) => store.put(normalized));
@@ -150,16 +177,19 @@ export async function upsertRecord(record) {
   return normalized;
 }
 
+/**
+ * 用给定记录整体替换本地记录，写入前会先完整校验。
+ */
 export async function replaceRecords(records) {
   if (!Array.isArray(records)) {
-    throw new Error('Records must be an array.');
+    throw new Error('记录列表必须是数组。');
   }
 
   const normalizedRecords = records.map((record) => {
     const normalized = normalizeRecord(record);
 
     if (!normalized) {
-      throw new Error('Invalid record');
+      throw new Error('记录格式无效。');
     }
 
     return normalized;
@@ -175,6 +205,9 @@ export async function replaceRecords(records) {
   return normalizedRecords;
 }
 
+/**
+ * 删除早于指定日期的记录，并返回删除数量。
+ */
 export async function deleteRecordsBefore(cutoffDate) {
   parseDateKey(cutoffDate);
 
@@ -194,6 +227,9 @@ export async function deleteRecordsBefore(cutoffDate) {
   return recordsToDelete.length;
 }
 
+/**
+ * 按一年保留策略清理过期记录。
+ */
 export function cleanupExpiredRecords(todayKey) {
   return deleteRecordsBefore(getRetentionCutoffDateKey(todayKey));
 }

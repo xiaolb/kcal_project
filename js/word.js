@@ -7,8 +7,11 @@ import {
 } from './calculations.js';
 import { normalizeRecord, isWithinRetention, isValidDateKey } from './records.js';
 
-export const WORD_TEMPLATE_MISMATCH = 'WORD_TEMPLATE_MISMATCH';
+export const WORD_TEMPLATE_MISMATCH = 'Word 文件格式不符合模板。';
 
+/**
+ * 转义 HTML 特殊字符，避免导出的 Word 表格内容破坏结构。
+ */
 export function escapeHtml(value) {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -18,9 +21,12 @@ export function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+/**
+ * 规范化导出记录，并补齐两类脂肪克数字段。
+ */
 export function buildExportRows(records) {
   if (!Array.isArray(records)) {
-    throw new Error('Records must be an array.');
+    throw new Error('记录列表必须是数组。');
   }
 
   return records
@@ -28,7 +34,7 @@ export function buildExportRows(records) {
       const normalized = normalizeRecord(record);
 
       if (!normalized) {
-        throw new Error('Invalid record.');
+        throw new Error('记录格式无效。');
       }
 
       return normalized;
@@ -40,13 +46,19 @@ export function buildExportRows(records) {
     }));
 }
 
+/**
+ * 格式化导出摘要值并转义 HTML。
+ */
 function formatSummaryValue(value) {
   return escapeHtml(value);
 }
 
+/**
+ * 生成 Word 可打开的 HTML 文档内容。
+ */
 export function buildWordHtml(records, exportedAt = new Date()) {
   if (!(exportedAt instanceof Date) || Number.isNaN(exportedAt.getTime())) {
-    throw new Error('Invalid export date.');
+    throw new Error('导出时间无效。');
   }
 
   const rows = buildExportRows(records);
@@ -110,9 +122,12 @@ th { font-weight: bold; }
 </html>`;
 }
 
+/**
+ * 生成 application/msword Blob，用于浏览器下载。
+ */
 export function buildWordBlob(records) {
   if (typeof Blob === 'undefined') {
-    throw new Error('Blob is not available.');
+    throw new Error('当前浏览器不支持生成 Word 文件。');
   }
 
   return new Blob([`\uFEFF${buildWordHtml(records)}`], {
@@ -120,13 +135,16 @@ export function buildWordBlob(records) {
   });
 }
 
+/**
+ * 规范化从 Word 表格读取的行，只信任 date、calories、updatedAt。
+ */
 export function normalizeImportedRows(rows, { todayKey } = {}) {
   if (!Array.isArray(rows)) {
-    throw new Error('Rows must be an array.');
+    throw new Error('导入行必须是数组。');
   }
 
   if (!isValidDateKey(todayKey)) {
-    throw new Error('Invalid today date key.');
+    throw new Error('当前日期无效。');
   }
 
   const records = [];
@@ -160,18 +178,30 @@ export function normalizeImportedRows(rows, { todayKey } = {}) {
   };
 }
 
+/**
+ * 获取表格单元格的纯文本。
+ */
 function getCellText(cell) {
   return String(cell?.textContent ?? '').trim();
 }
 
+/**
+ * 兼容真实 DOM 与测试替身，读取表格行。
+ */
 function getTableRows(table) {
   return Array.from(table?.rows ?? table?.querySelectorAll?.('tr') ?? []);
 }
 
+/**
+ * 兼容真实 DOM 与测试替身，读取行内单元格。
+ */
 function getRowCells(row) {
   return Array.from(row?.cells ?? row?.querySelectorAll?.('th,td') ?? []);
 }
 
+/**
+ * 从 Word HTML 文档中读取符合模板表头的数据行。
+ */
 export function readRowsFromWordDocument(documentObject) {
   const tables = Array.from(documentObject?.querySelectorAll?.('table') ?? []);
 
@@ -208,13 +238,16 @@ export function readRowsFromWordDocument(documentObject) {
   throw new Error(WORD_TEMPLATE_MISMATCH);
 }
 
+/**
+ * 读取用户选择的 Word 文件并转成可合并的记录列表。
+ */
 export async function readWordFile(file, todayKey) {
   if (!file || typeof file.text !== 'function') {
-    throw new Error('Invalid file.');
+    throw new Error('导入文件无效。');
   }
 
   if (typeof DOMParser === 'undefined') {
-    throw new Error('DOMParser is not available.');
+    throw new Error('当前浏览器不支持解析 Word 文件。');
   }
 
   const text = await file.text();

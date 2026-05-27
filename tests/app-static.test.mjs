@@ -20,6 +20,13 @@ function localAssetExists(assetPath) {
   return existsSync(resolve(projectRoot, normalizedPath));
 }
 
+function readTrackedJsFiles() {
+  return execFileSync('git', ['ls-files', 'js/*.js'], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  }).trim().split('\n').filter(Boolean);
+}
+
 test('static shell references existing local assets', () => {
   const html = readProjectFile('index.html');
   const serviceWorker = readProjectFile('service-worker.js');
@@ -103,4 +110,44 @@ test('tracked project files do not reference the original local download path', 
   }
 
   assert.deepEqual(violations, []);
+});
+
+test('runtime validation messages are Chinese for users and support staff', () => {
+  const forbiddenPhrases = /\b(?:Invalid|Records?|Calories?|Grams?|Blob|DOMParser|unavailable|failed|blocked|aborted|required|must)\b/;
+  const violations = [];
+
+  for (const filePath of readTrackedJsFiles()) {
+    const source = readProjectFile(filePath);
+    const messageMatches = [
+      ...source.matchAll(/new Error\((['"`])([\s\S]*?)\1\)/g),
+      ...source.matchAll(/error:\s*(['"`])([\s\S]*?)\1/g),
+    ];
+
+    for (const match of messageMatches) {
+      if (forbiddenPhrases.test(match[2])) {
+        violations.push(`${filePath}: ${match[2]}`);
+      }
+    }
+  }
+
+  assert.deepEqual(violations, []);
+});
+
+test('exported functions include JSDoc comments', () => {
+  const missingComments = [];
+
+  for (const filePath of readTrackedJsFiles()) {
+    const source = readProjectFile(filePath);
+    const exportMatches = source.matchAll(/(^|\n)(export (?:async )?function \w+\([^)]*\) \{)/g);
+
+    for (const match of exportMatches) {
+      const beforeExport = source.slice(0, match.index + match[1].length).trimEnd();
+
+      if (!beforeExport.endsWith('*/')) {
+        missingComments.push(`${filePath}: ${match[2]}`);
+      }
+    }
+  }
+
+  assert.deepEqual(missingComments, []);
 });

@@ -18,11 +18,11 @@ test('toDateKey formats a local date as YYYY-MM-DD', () => {
 });
 
 test('toDateKey rejects dates before supported YYYY years', () => {
-  assert.throws(() => toDateKey(new Date(999, 0, 1)), /Invalid date key year/);
+  assert.throws(() => toDateKey(new Date(999, 0, 1)), /日期年份必须/);
 });
 
 test('toDateKey rejects dates after supported YYYY years', () => {
-  assert.throws(() => toDateKey(new Date(10000, 0, 1)), /Invalid date key year/);
+  assert.throws(() => toDateKey(new Date(10000, 0, 1)), /日期年份必须/);
 });
 
 test('toDateKey rejects invalid Date instances', () => {
@@ -48,7 +48,7 @@ test('parseDateKey rejects non-string inputs', () => {
     },
   };
 
-  assert.throws(() => parseDateKey(input), /Invalid date key/);
+  assert.throws(() => parseDateKey(input), /日期格式必须/);
 });
 
 test('parseDateKey rejects unsupported years before 1000', () => {
@@ -142,7 +142,7 @@ test('isDateKeyInRange validates all date key inputs', () => {
 test('isDateKeyInRange rejects reversed ranges', () => {
   assert.throws(
     () => isDateKeyInRange('2026-05-26', '2026-05-27', '2026-05-25'),
-    /Invalid date range/,
+    /日期范围无效/,
   );
 });
 
@@ -153,5 +153,5 @@ test('enumerateDateKeys validates both boundaries before enumeration', () => {
 });
 
 test('enumerateDateKeys rejects reversed ranges', () => {
-  assert.throws(() => enumerateDateKeys('2026-05-27', '2026-05-25'), /Invalid date range/);
+  assert.throws(() => enumerateDateKeys('2026-05-27', '2026-05-25'), /日期范围无效/);
 });
