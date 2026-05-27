@@ -37,6 +37,10 @@ test('parseDateKey rejects impossible dates instead of rolling them over', () =>
   assert.throws(() => parseDateKey('2026-02-31'), Error);
 });
 
+test('parseDateKey rejects non-string inputs', () => {
+  assert.throws(() => parseDateKey({ toString: () => '2026-05-26' }), Error);
+});
+
 test('parseDateKey rejects unsupported years before 1000', () => {
   assert.throws(() => parseDateKey('0001-01-01'), Error);
   assert.throws(() => parseDateKey('0999-12-31'), Error);

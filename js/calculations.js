@@ -52,6 +52,10 @@ export function calculateFatGrams(calories) {
 }
 
 export function summarizeRecords(records) {
+  if (!Array.isArray(records)) {
+    throw new Error('Records must be an array.');
+  }
+
   const totalCalories = roundTo(
     records.reduce((total, record) => {
       assertValidCalories(record.calories);

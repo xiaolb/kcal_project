@@ -79,6 +79,10 @@ test('summarizeRecords totals calories and calculates grams from the total', () 
   );
 });
 
+test('summarizeRecords rejects non-array records input', () => {
+  assert.throws(() => summarizeRecords({ length: 0, reduce: () => 0 }), Error);
+});
+
 test('summarizeRecords rejects invalid record calorie values', () => {
   assert.throws(
     () => summarizeRecords([
