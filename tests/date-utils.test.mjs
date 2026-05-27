@@ -21,6 +21,10 @@ test('toDateKey rejects dates before supported YYYY years', () => {
   assert.throws(() => toDateKey(new Date(999, 0, 1)), /Invalid date key year/);
 });
 
+test('toDateKey rejects dates after supported YYYY years', () => {
+  assert.throws(() => toDateKey(new Date(10000, 0, 1)), /Invalid date key year/);
+});
+
 test('toDateKey rejects invalid Date instances', () => {
   assert.throws(() => toDateKey(new Date('bad')), Error);
 });

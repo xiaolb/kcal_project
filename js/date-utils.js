@@ -53,11 +53,13 @@ export function toDateKey(date) {
     throw new Error('Invalid date');
   }
 
-  if (date.getFullYear() < 1000) {
+  const year = date.getFullYear();
+
+  if (year < 1000 || year > 9999) {
     throw new Error('Invalid date key year');
   }
 
-  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  return `${year}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
 export function addDays(dateKey, days) {
