@@ -67,8 +67,8 @@ export function filterRecordsByRange(records, startDate, endDate) {
   isDateKeyInRange(startDate, startDate, endDate);
 
   return records
-    .filter((record) => isDateKeyInRange(record.date, startDate, endDate))
-    .slice()
+    .map((record) => normalizeRecord(record))
+    .filter((record) => record && isDateKeyInRange(record.date, startDate, endDate))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -91,8 +91,10 @@ export function mergeImportedRecords(existingRecords, importedRecords) {
   const byDate = new Map();
 
   for (const record of existingRecords) {
-    if (record && typeof record === 'object' && !Array.isArray(record) && isValidDateKey(record.date)) {
-      byDate.set(record.date, { ...record });
+    const normalized = normalizeRecord(record);
+
+    if (normalized) {
+      byDate.set(normalized.date, normalized);
     }
   }
 

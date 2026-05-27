@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isValidIsoDate, mergeImportedRecords } from '../js/records.js';
+import {
+  filterRecordsByRange,
+  isValidIsoDate,
+  mergeImportedRecords,
+} from '../js/records.js';
 import {
   buildWordHtml,
   normalizeImportedRows,
@@ -122,6 +126,44 @@ test('normalizeImportedRows counts rows with invalid updatedAt as invalid', () =
   );
 });
 
+test('filterRecordsByRange skips invalid records and returns normalized in-range records', () => {
+  assert.deepEqual(
+    filterRecordsByRange(
+      [
+        {
+          date: '2026-05-26',
+          calories: '520',
+          updatedAt: '2026-05-26T10:00:00.000Z',
+        },
+        {
+          date: 'bad-date',
+          calories: 300,
+          updatedAt: '2026-05-26T10:00:00.000Z',
+        },
+        {
+          date: '2026-05-27',
+          calories: [1],
+          updatedAt: '2026-05-27T10:00:00.000Z',
+        },
+        {
+          date: '2026-05-28',
+          calories: 700,
+          updatedAt: '2026-05-28T10:00:00.000Z',
+        },
+      ],
+      '2026-05-25',
+      '2026-05-27',
+    ),
+    [
+      {
+        date: '2026-05-26',
+        calories: 520,
+        updatedAt: '2026-05-26T10:00:00.000Z',
+      },
+    ],
+  );
+});
+
 test('mergeImportedRecords inserts new records sorted by date', () => {
   assert.deepEqual(
     mergeImportedRecords(
@@ -193,6 +235,60 @@ test('mergeImportedRecords overwrites same-date records only when imported updat
   );
 });
 
+test('mergeImportedRecords omits invalid existing rows from output', () => {
+  assert.deepEqual(
+    mergeImportedRecords(
+      [
+        {
+          date: '2026-05-26',
+          calories: [1],
+          updatedAt: '2026-05-26T10:00:00.000Z',
+        },
+      ],
+      [],
+    ),
+    {
+      records: [],
+      insertedCount: 0,
+      overwrittenCount: 0,
+      skippedConflictCount: 0,
+    },
+  );
+});
+
+test('mergeImportedRecords inserts imported row when same-date existing row is invalid', () => {
+  assert.deepEqual(
+    mergeImportedRecords(
+      [
+        {
+          date: '2026-05-26',
+          calories: 520,
+          updatedAt: 'not-a-date',
+        },
+      ],
+      [
+        {
+          date: '2026-05-26',
+          calories: 600,
+          updatedAt: '2026-05-26T10:00:01.000Z',
+        },
+      ],
+    ),
+    {
+      records: [
+        {
+          date: '2026-05-26',
+          calories: 600,
+          updatedAt: '2026-05-26T10:00:01.000Z',
+        },
+      ],
+      insertedCount: 1,
+      overwrittenCount: 0,
+      skippedConflictCount: 0,
+    },
+  );
+});
+
 test('mergeImportedRecords skips older same-date records', () => {
   const existing = {
     date: '2026-05-26',
@@ -220,11 +316,11 @@ test('mergeImportedRecords skips older same-date records', () => {
   );
 });
 
-test('mergeImportedRecords skips same-date conflicts with unparseable updatedAt values', () => {
+test('mergeImportedRecords skips same-date conflicts with unparseable imported updatedAt values', () => {
   const existing = {
     date: '2026-05-26',
     calories: 520,
-    updatedAt: 'not-a-date',
+    updatedAt: '2026-05-26T10:00:00.000Z',
   };
 
   assert.deepEqual(
@@ -234,7 +330,7 @@ test('mergeImportedRecords skips same-date conflicts with unparseable updatedAt 
         {
           date: '2026-05-26',
           calories: 600,
-          updatedAt: '2026-05-26T10:00:01.000Z',
+          updatedAt: 'not-a-date',
         },
       ],
     ),
