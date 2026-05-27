@@ -8,6 +8,16 @@ export function roundTo(value, digits) {
   return Math.round((value + Number.EPSILON) * factor) / factor;
 }
 
+function assertFiniteNonNegativeNumber(value, label) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite non-negative number.`);
+  }
+}
+
+function assertValidCalories(calories) {
+  assertFiniteNonNegativeNumber(calories, 'Calories');
+}
+
 export function normalizeCaloriesInput(input) {
   if (typeof input !== 'string' && typeof input !== 'number') {
     return { ok: false, error: 'Calories must be a plain non-negative decimal number.' };
@@ -33,6 +43,8 @@ export function normalizeCaloriesInput(input) {
 }
 
 export function calculateFatGrams(calories) {
+  assertValidCalories(calories);
+
   return {
     bodyFatGrams: roundTo(calories * BODY_FAT_GRAMS_PER_CALORIE, 1),
     pureFatGrams: roundTo(calories * PURE_FAT_GRAMS_PER_CALORIE, 1),
@@ -41,7 +53,10 @@ export function calculateFatGrams(calories) {
 
 export function summarizeRecords(records) {
   const totalCalories = roundTo(
-    records.reduce((total, record) => total + Number(record.calories || 0), 0),
+    records.reduce((total, record) => {
+      assertValidCalories(record.calories);
+      return total + record.calories;
+    }, 0),
     2,
   );
 
@@ -53,9 +68,13 @@ export function summarizeRecords(records) {
 }
 
 export function formatCalories(value) {
+  assertValidCalories(value);
+
   return String(roundTo(value, 2));
 }
 
 export function formatGrams(value) {
+  assertFiniteNonNegativeNumber(value, 'Grams');
+
   return roundTo(value, 1).toFixed(1);
 }

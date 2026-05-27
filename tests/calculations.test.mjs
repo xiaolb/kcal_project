@@ -42,14 +42,26 @@ test('calculateFatGrams returns body fat and pure fat grams rounded to one decim
   });
 });
 
+test('calculateFatGrams rejects invalid calorie values', () => {
+  assert.throws(() => calculateFatGrams('abc'), Error);
+});
+
 test('formatCalories rounds to two decimals without forced trailing zeros', () => {
   assert.equal(formatCalories(520), '520');
   assert.equal(formatCalories(520.25), '520.25');
 });
 
+test('formatCalories rejects invalid calorie values', () => {
+  assert.throws(() => formatCalories('abc'), Error);
+});
+
 test('formatGrams rounds to one decimal string', () => {
   assert.equal(formatGrams(67.64), '67.6');
   assert.equal(formatGrams(67.65), '67.7');
+});
+
+test('formatGrams rejects invalid gram values', () => {
+  assert.throws(() => formatGrams('abc'), Error);
 });
 
 test('summarizeRecords totals calories and calculates grams from the total', () => {
@@ -64,5 +76,28 @@ test('summarizeRecords totals calories and calculates grams from the total', () 
       bodyFatGrams: 45.6,
       pureFatGrams: 38.9,
     },
+  );
+});
+
+test('summarizeRecords rejects invalid record calorie values', () => {
+  assert.throws(
+    () => summarizeRecords([
+      {
+        date: '2026-05-26',
+        calories: [1],
+        updatedAt: '2026-05-26T10:00:00.000Z',
+      },
+    ]),
+    Error,
+  );
+  assert.throws(
+    () => summarizeRecords([
+      {
+        date: '2026-05-26',
+        calories: -1,
+        updatedAt: '2026-05-26T10:00:00.000Z',
+      },
+    ]),
+    Error,
   );
 });
