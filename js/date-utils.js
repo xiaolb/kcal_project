@@ -27,7 +27,7 @@ function subtractYearsClamped(dateKey, years) {
 
 export function parseDateKey(dateKey) {
   if (typeof dateKey !== 'string') {
-    throw new Error(`Invalid date key: ${dateKey}`);
+    throw new Error('Invalid date key');
   }
 
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
